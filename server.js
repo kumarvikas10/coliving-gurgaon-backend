@@ -22,5 +22,10 @@ mongoose.connect(process.env.MONGO_URI, {
 const cityContentRoutes = require('./routes/cityContentRoutes');
 app.use('/api/cities', cityContentRoutes);
 
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 // Start server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
