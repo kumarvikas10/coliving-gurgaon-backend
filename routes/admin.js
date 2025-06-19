@@ -2,12 +2,11 @@ const express = require('express');
 const router = express.Router();
 const CityContent = require('../models/CityContent');
 
-// Simple login route (hardcoded for now)
+// Simple login route
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
 
   if (username === 'admin' && password === 'admin123') {
-    // Generate token (simple hardcoded token for now)
     res.json({ success: true, token: 'secret-token-123' });
   } else {
     res.json({ success: false });
@@ -18,30 +17,27 @@ router.post('/login', (req, res) => {
 router.post('/cities', async (req, res) => {
   const { city, title, description, footerTitle, footerDescription } = req.body;
 
-  try {
-    let existing = await CityContent.findOne({ city });
+  if (!city) {
+    return res.status(400).json({ success: false, error: 'City is required' });
+  }
 
-    if (existing) {
-      // Update
-      existing.title = title;
-      existing.description = description;
-      existing.footerTitle = footerTitle;
-      existing.footerDescription = footerDescription;
-      await existing.save();
-    } else {
-      // Create new
-      await CityContent.create({
-        city,
-        title,
-        description,
-        footerTitle,
-        footerDescription,
-      });
-    }
+  try {
+    await CityContent.updateOne(
+      { city },
+      {
+        $set: {
+          title,
+          description,
+          footerTitle,
+          footerDescription,
+        },
+      },
+      { upsert: true } // create if not exists
+    );
 
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('Error saving city:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
