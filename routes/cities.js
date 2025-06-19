@@ -2,19 +2,18 @@ const express = require('express');
 const router = express.Router();
 const CityContent = require('../models/CityContent');
 
-// Get all cities (only names, for dropdown)
+// Get all cities
 router.get('/', async (req, res) => {
   try {
-    const cities = await CityContent.find({}, 'city').sort({ city: 1 });
-    const cityNames = cities.map((item) => item.city);
-    res.json(cityNames);
+    const cities = await CityContent.find({}, 'city'); // only return city field
+    res.json(cities);
   } catch (err) {
-    console.error('Error fetching cities:', err);
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Get single city content by name
+// Get single city by name
 router.get('/:city', async (req, res) => {
   const { city } = req.params;
 
@@ -27,7 +26,7 @@ router.get('/:city', async (req, res) => {
       res.status(404).json({ error: 'City not found' });
     }
   } catch (err) {
-    console.error('Error fetching city:', err);
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
