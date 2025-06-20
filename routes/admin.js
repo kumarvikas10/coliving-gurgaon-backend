@@ -7,7 +7,6 @@ router.post('/login', (req, res) => {
   const { username, password } = req.body;
 
   if (username === 'admin' && password === 'admin123') {
-    // Simple token for now
     res.json({ success: true, token: 'secret-token-123' });
   } else {
     res.json({ success: false });
@@ -26,14 +25,12 @@ router.post('/cities', async (req, res) => {
     let existing = await CityContent.findOne({ city });
 
     if (existing) {
-      // Update
       existing.title = title || '';
       existing.description = description || '';
       existing.footerTitle = footerTitle || '';
       existing.footerDescription = footerDescription || '';
       await existing.save();
     } else {
-      // Create new
       await CityContent.create({
         city,
         title: title || '',
@@ -50,7 +47,7 @@ router.post('/cities', async (req, res) => {
   }
 });
 
-// Delete city
+// DELETE city
 router.delete('/cities/:city', async (req, res) => {
   const { city } = req.params;
 
@@ -58,6 +55,32 @@ router.delete('/cities/:city', async (req, res) => {
     const result = await CityContent.deleteOne({ city });
 
     if (result.deletedCount === 1) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: 'City not found' });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ✅ PUT rename city
+router.put('/cities/:city', async (req, res) => {
+  const { city } = req.params;
+  const { newCity } = req.body;
+
+  if (!newCity) {
+    return res.status(400).json({ success: false, error: 'New city name required' });
+  }
+
+  try {
+    const existing = await CityContent.findOne({ city });
+
+    if (existing) {
+      existing.city = newCity;
+      await existing.save();
+
       res.json({ success: true });
     } else {
       res.status(404).json({ success: false, error: 'City not found' });
