@@ -6,6 +6,9 @@ const CityContentSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   footerTitle: { type: String, default: '' },
   footerDescription: { type: String, default: '' },
+  metaTitle: { type: String, default: '' },
+  metaDescription: { type: String, default: '' },
+  schemaMarkup: { type: String, default: '' },
 });
 
 module.exports = mongoose.model('CityContent', CityContentSchema);

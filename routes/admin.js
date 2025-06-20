@@ -15,7 +15,16 @@ router.post('/login', (req, res) => {
 
 // Add or update city content
 router.post('/cities', async (req, res) => {
-  const { city, title, description, footerTitle, footerDescription } = req.body;
+  const {
+    city,
+    title,
+    description,
+    footerTitle,
+    footerDescription,
+    metaTitle,
+    metaDescription,
+    schemaMarkup
+  } = req.body;
 
   if (!city) {
     return res.status(400).json({ success: false, error: 'City is required' });
@@ -25,18 +34,27 @@ router.post('/cities', async (req, res) => {
     let existing = await CityContent.findOne({ city });
 
     if (existing) {
+      // Update
       existing.title = title || '';
       existing.description = description || '';
       existing.footerTitle = footerTitle || '';
       existing.footerDescription = footerDescription || '';
+      existing.metaTitle = metaTitle || '';
+      existing.metaDescription = metaDescription || '';
+      existing.schemaMarkup = schemaMarkup || '';
+
       await existing.save();
     } else {
+      // Create new
       await CityContent.create({
         city,
         title: title || '',
         description: description || '',
         footerTitle: footerTitle || '',
         footerDescription: footerDescription || '',
+        metaTitle: metaTitle || '',
+        metaDescription: metaDescription || '',
+        schemaMarkup: schemaMarkup || '',
       });
     }
 
@@ -46,6 +64,7 @@ router.post('/cities', async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
 
 // DELETE city
 router.delete('/cities/:city', async (req, res) => {
