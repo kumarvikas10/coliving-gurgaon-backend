@@ -13,9 +13,8 @@ router.post('/login', (req, res) => {
   }
 });
 
-// Add or update city content
 router.post('/cities', async (req, res) => {
-  const {
+  let {
     city,
     title,
     description,
@@ -23,18 +22,19 @@ router.post('/cities', async (req, res) => {
     footerDescription,
     metaTitle,
     metaDescription,
-    schemaMarkup
+    schemaMarkup,
   } = req.body;
 
   if (!city) {
     return res.status(400).json({ success: false, error: 'City is required' });
   }
 
+  city = city.toLowerCase();
+
   try {
     let existing = await CityContent.findOne({ city });
 
     if (existing) {
-      // Update
       existing.title = title || '';
       existing.description = description || '';
       existing.footerTitle = footerTitle || '';
@@ -42,12 +42,10 @@ router.post('/cities', async (req, res) => {
       existing.metaTitle = metaTitle || '';
       existing.metaDescription = metaDescription || '';
       existing.schemaMarkup = schemaMarkup || '';
-
       await existing.save();
     } else {
-      // Create new
       await CityContent.create({
-        city,
+        city, // now always lowercase
         title: title || '',
         description: description || '',
         footerTitle: footerTitle || '',
