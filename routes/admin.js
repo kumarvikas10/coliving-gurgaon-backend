@@ -15,7 +15,7 @@ router.post('/login', (req, res) => {
 
 router.post('/cities', async (req, res) => {
   let {
-    city,
+    city, // original input
     title,
     description,
     footerTitle,
@@ -29,12 +29,13 @@ router.post('/cities', async (req, res) => {
     return res.status(400).json({ success: false, error: 'City is required' });
   }
 
-  city = city.toLowerCase();
+  const slugCity = city.toLowerCase();  // ✅ lowercase slug
 
   try {
-    let existing = await CityContent.findOne({ city });
+    let existing = await CityContent.findOne({ city: slugCity });
 
     if (existing) {
+      existing.displayCity = city;  // save original case
       existing.title = title || '';
       existing.description = description || '';
       existing.footerTitle = footerTitle || '';
@@ -45,7 +46,8 @@ router.post('/cities', async (req, res) => {
       await existing.save();
     } else {
       await CityContent.create({
-        city, // now always lowercase
+        city: slugCity,
+        displayCity: city,   // 👈 save original input for frontend display
         title: title || '',
         description: description || '',
         footerTitle: footerTitle || '',
@@ -92,10 +94,11 @@ router.put('/cities/:city', async (req, res) => {
   }
 
   try {
-    const existing = await CityContent.findOne({ city });
+    const existing = await CityContent.findOne({ city: city.toLowerCase() });
 
     if (existing) {
-      existing.city = newCity;
+      existing.city = newCity.toLowerCase();       // slug
+      existing.displayCity = newCity;              // display name
       await existing.save();
 
       res.json({ success: true });
@@ -107,5 +110,6 @@ router.put('/cities/:city', async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
 
 module.exports = router;
