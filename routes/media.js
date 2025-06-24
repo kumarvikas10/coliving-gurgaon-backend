@@ -1,4 +1,3 @@
-// routes/media.js
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -21,22 +20,32 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
 
-    const result = await cloudinary.uploader.upload_stream(
-      { resource_type: 'auto' },
-      (error, result) => {
-        if (error) return res.status(500).json({ success: false, error });
+    // Wrap cloudinary upload_stream in a Promise
+    const streamUpload = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: 'auto' }, // auto detect image/video/etc
+          (error, result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(error);
+            }
+          }
+        );
 
-        res.json({
-          success: true,
-          url: result.secure_url,
-          public_id: result.public_id,
-          resource_type: result.resource_type,
-        });
-      }
-    );
+        stream.end(fileBuffer);
+      });
+    };
 
-    // Pipe the file buffer to Cloudinary
-    result.end(file.buffer);
+    const result = await streamUpload(file.buffer);
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+      public_id: result.public_id,
+      resource_type: result.resource_type,
+    });
 
   } catch (err) {
     console.error('Upload Error:', err);
