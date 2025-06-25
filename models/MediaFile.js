@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
-const MediaFileSchema = new mongoose.Schema({
-  url: { type: String, required: true },
-  public_id: { type: String, required: true },
-  resource_type: { type: String, required: true }, // image or video
-  original_filename: { type: String },
-  createdAt: { type: Date, default: Date.now }
-});
+const mediaFileSchema = new mongoose.Schema({
+  url: String,
+  public_id: String,
+  resource_type: String,
+  original_filename: String,
+  alt: String, // <-- add this line
+}, { timestamps: true });
 
-module.exports = mongoose.model('MediaFile', MediaFileSchema);
+module.exports = mongoose.model('MediaFile', mediaFileSchema);
