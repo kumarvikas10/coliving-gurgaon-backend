@@ -44,15 +44,18 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           return res.status(500).json({ success: false, error: 'Upload failed' });
         }
 
-        // Generate alt tag from filename
-        const alt = result.original_filename.toLowerCase().replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/g, "-");
+        // Generate alt tag from original uploaded file name (not from Cloudinary result)
+        const alt = req.file.originalname
+          .toLowerCase()
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[^a-z0-9]/g, "-");
 
         // Save in MongoDB
         const newMedia = new MediaFile({
           url: result.secure_url,
           public_id: result.public_id,
           resource_type: result.resource_type,
-          original_filename: result.original_filename,
+          original_filename: result.original_filename, // keep this if needed
           alt,
         });
 
