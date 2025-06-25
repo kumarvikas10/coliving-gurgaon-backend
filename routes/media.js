@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
 
 // DELETE media by public_id
 router.delete('/delete/:public_id', async (req, res) => {
-  const { public_id } = req.params;
+  const public_id = decodeURIComponent(req.params.public_id);
 
   try {
     const file = await MediaFile.findOne({ public_id });
