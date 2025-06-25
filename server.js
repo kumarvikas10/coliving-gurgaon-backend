@@ -12,12 +12,16 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB error:', err));
 
-const mediaRoutes = require('./routes/media');
 
 // Routes
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/cities', require('./routes/cities'));
+
+const mediaRoutes = require('./routes/media');
 app.use('/api/media', mediaRoutes);
+
+const portfolioRoutes = require('./routes/portfolio');
+app.use('/api/portfolio', portfolioRoutes);
 
 app.get('/', (req, res) => {
   res.send('Sandy Photography API is running 🚀');
