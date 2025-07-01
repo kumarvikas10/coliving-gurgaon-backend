@@ -5,7 +5,7 @@ const mediaFileSchema = new mongoose.Schema({
   public_id: String,
   resource_type: String,
   original_filename: String,
-  alt: String, // <-- add this line
+  alt: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model('MediaFile', mediaFileSchema);

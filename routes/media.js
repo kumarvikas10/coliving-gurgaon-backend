@@ -104,4 +104,28 @@ router.delete('/delete/:public_id', async (req, res) => {
   }
 });
 
+// PATCH: Update alt tag
+router.patch('/update/:public_id', async (req, res) => {
+  const { public_id } = req.params;
+  const { alt } = req.body;
+
+  try {
+    const updated = await MediaFile.findOneAndUpdate(
+      { public_id },
+      { alt },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    res.json({ success: true, file: updated });
+  } catch (err) {
+    console.error('Update error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+
 module.exports = router;
