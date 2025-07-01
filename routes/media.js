@@ -135,6 +135,13 @@ router.post('/save-priority', async (req, res) => {
   const { updates } = req.body;
 
   try {
+    // Step 1: Reset all files' isPriority to false
+    await MediaFile.updateMany(
+      { isPriority: true },
+      { $set: { isPriority: false, priorityOrder: null } }
+    );
+
+    // Step 2: Set isPriority true for updated files
     for (const update of updates) {
       await MediaFile.updateOne(
         { public_id: update.public_id },
@@ -144,12 +151,14 @@ router.post('/save-priority', async (req, res) => {
         }
       );
     }
+
     res.json({ success: true });
   } catch (err) {
     console.error("Priority save error:", err);
     res.status(500).json({ success: false, error: "Failed to update priority." });
   }
 });
+
 
 
 // Remove a media from priority list
