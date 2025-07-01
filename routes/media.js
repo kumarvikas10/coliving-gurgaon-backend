@@ -130,7 +130,7 @@ router.patch('/update/:public_id', async (req, res) => {
   }
 });
 
-// POST /api/media/save-priority
+// Save/update priority
 router.post('/save-priority', async (req, res) => {
   const { updates } = req.body;
 
@@ -150,5 +150,31 @@ router.post('/save-priority', async (req, res) => {
     res.status(500).json({ success: false, error: "Failed to update priority." });
   }
 });
+
+
+// Remove a media from priority list
+router.patch('/remove-priority/:public_id', async (req, res) => {
+  const { public_id } = req.params;
+
+  try {
+    const updated = await MediaFile.findOneAndUpdate(
+      { public_id },
+      { isPriority: false, priorityOrder: 0 },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    res.json({ success: true, file: updated });
+  } catch (err) {
+    console.error('Remove priority error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+
+
 
 module.exports = router;
