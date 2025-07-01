@@ -131,12 +131,12 @@ router.patch('/update/:public_id', async (req, res) => {
 });
 
 // POST /api/media/save-priority
-router.post('/media/save-priority', async (req, res) => {
+router.post('/save-priority', async (req, res) => {
   const { updates } = req.body;
 
   try {
     for (const update of updates) {
-      await Media.updateOne(
+      await MediaFile.updateOne(
         { public_id: update.public_id },
         {
           isPriority: true,
@@ -150,7 +150,5 @@ router.post('/media/save-priority', async (req, res) => {
     res.status(500).json({ success: false, error: "Failed to update priority." });
   }
 });
-
-
 
 module.exports = router;
