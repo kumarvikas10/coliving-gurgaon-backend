@@ -55,9 +55,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           url: result.secure_url,
           public_id: result.public_id,
           resource_type: result.resource_type,
-          original_filename: result.original_filename, // keep this if needed
+          original_filename: result.original_filename,
           alt,
+          width: result.width,   // ✅ add this
+          height: result.height, // ✅ add this
         });
+
 
         await newMedia.save();
 
