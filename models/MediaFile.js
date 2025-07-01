@@ -9,6 +9,9 @@ const mediaSchema = new mongoose.Schema(
     alt: String,
     width: Number,   // ✅
     height: Number,  // ✅
+    priorityOrder: { type: Number, default: null },
+    isPriority: { type: Boolean, default: false }
+
   },
   { timestamps: true }
 );
