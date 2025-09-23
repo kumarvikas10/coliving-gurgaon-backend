@@ -17,6 +17,10 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/cities', require('./routes/cities'));
 
+const microRoutes = require('./routes/microlocations');
+app.use('/api/microlocations', microRoutes);
+
+
 const mediaRoutes = require('./routes/media');
 app.use('/api/media', mediaRoutes);
 
