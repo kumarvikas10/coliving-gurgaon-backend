@@ -13,15 +13,15 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
   .catch(err => console.error('MongoDB error:', err));
 
 
-// // Routes
-// app.use('/api/admin', require('./routes/admin'));
-// app.use('/api/cities', require('./routes/cities'));
+// Routes
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/cities', require('./routes/cities'));
 
-// const mediaRoutes = require('./routes/media');
-// app.use('/api/media', mediaRoutes);
+const mediaRoutes = require('./routes/media');
+app.use('/api/media', mediaRoutes);
 
-// const portfolioRoutes = require('./routes/portfolio');
-// app.use('/api/portfolio', portfolioRoutes);
+const portfolioRoutes = require('./routes/portfolio');
+app.use('/api/portfolio', portfolioRoutes);
 
 app.get('/', (req, res) => {
   res.send('Coliving Gurgaon API is running 🚀');
