@@ -55,13 +55,27 @@ router.post('/', async (req, res) => {
 
 router.post('/update', async (req, res) => {
   try {
-    const { city, slug, footerTitle, footerDescription, metaTitle, metaDescription, schemaMarkup } = req.body;
+    const { city, slug, name, footerTitle, footerDescription, metaTitle, metaDescription, schemaMarkup } = req.body;
     if (!city || !slug) return res.status(400).json({ error: 'City and slug required' });
+
+    const updatedFields = {
+      footerTitle,
+      footerDescription,
+      metaTitle,
+      metaDescription,
+      schemaMarkup,
+    };
+
+    // If name is provided, also update name & slug
+    if (name) {
+      updatedFields.name = name;
+      updatedFields.slug = name.toLowerCase().replace(/\s+/g, '-');
+    }
 
     const micro = await Microlocation.findOneAndUpdate(
       { city, slug },
-      { footerTitle, footerDescription, metaTitle, metaDescription, schemaMarkup },
-      { new: true, upsert: true } // create if not exists
+      updatedFields,
+      { new: true }
     );
 
     res.json({ success: true, micro });
@@ -70,6 +84,7 @@ router.post('/update', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // ✅ Delete microlocation
 router.delete('/:id', async (req, res) => {
