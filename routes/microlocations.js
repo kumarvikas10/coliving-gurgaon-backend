@@ -28,14 +28,16 @@ router.get('/:city/:microSlug', async (req, res) => {
 });
 
 // ✅ Add new microlocation
-router.post('/', async (req, res) => {
+router.post('/update', async (req, res) => {
   try {
-    const { name, city } = req.body;
-    if (!name || !city) return res.status(400).json({ error: 'Name and city are required' });
+    const { city, slug, footerTitle, footerDescription, metaTitle, metaDescription, schemaMarkup } = req.body;
+    if (!city || !slug) return res.status(400).json({ error: 'City and slug required' });
 
-    const slug = name.toLowerCase().replace(/\s+/g, '-');
-    const micro = new Microlocation({ name, slug, city });
-    await micro.save();
+    const micro = await Microlocation.findOneAndUpdate(
+      { city, slug },
+      { footerTitle, footerDescription, metaTitle, metaDescription, schemaMarkup },
+      { new: true, upsert: true } // create if not exists
+    );
 
     res.json({ success: true, micro });
   } catch (err) {
