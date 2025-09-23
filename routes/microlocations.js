@@ -2,12 +2,25 @@ const express = require('express');
 const router = express.Router();
 const Microlocation = require('../models/Microlocation');
 
-// ✅ Get microlocations by city
+// ✅ Get all microlocations for a city
 router.get('/:city', async (req, res) => {
   try {
-    const { city } = req.params;
-    const micros = await Microlocation.find({ city });
+    const { city } = req.params; // slug
+    const micros = await Microlocation.find({ city }); // match city slug
     res.json(micros);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ Get single microlocation by slug
+router.get('/:city/:microSlug', async (req, res) => {
+  try {
+    const { city, microSlug } = req.params;
+    const micro = await Microlocation.findOne({ city, slug: microSlug });
+    if (!micro) return res.status(404).json({ error: 'Microlocation not found' });
+    res.json(micro);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -18,10 +31,7 @@ router.get('/:city', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, city } = req.body;
-
-    if (!name || !city) {
-      return res.status(400).json({ error: 'Name and city are required' });
-    }
+    if (!name || !city) return res.status(400).json({ error: 'Name and city are required' });
 
     const slug = name.toLowerCase().replace(/\s+/g, '-');
     const micro = new Microlocation({ name, slug, city });
