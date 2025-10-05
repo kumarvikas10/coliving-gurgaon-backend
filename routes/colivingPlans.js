@@ -45,19 +45,26 @@ router.get("/:id", async (req, res, next) => {
 router.post("/", upload.single("image"), async (req, res, next) => {
   try {
     const { type, description = "", enabled = true } = req.body;
-    if (!type?.trim()) return res.status(400).json({ success: false, message: "type is required" });
+    if (!type?.trim()) {
+      return res.status(400).json({ success: false, message: "type is required" });
+    }
 
     let imageMeta;
     if (req.file?.buffer) {
-      const up = await uploadBufferToCloudinary(req.file.buffer, "coliving/plans");
-      imageMeta = {
-        publicId: up.public_id,
-        secureUrl: up.secure_url,
-        bytes: up.bytes,
-        format: up.format,
-        width: up.width,
-        height: up.height,
-      };
+      try {
+        const up = await uploadBufferToCloudinary(req.file.buffer, "coliving/plans");
+        imageMeta = {
+          publicId: up.public_id,
+          secureUrl: up.secure_url,
+          bytes: up.bytes,
+          format: up.format,
+          width: up.width,
+          height: up.height,
+        };
+      } catch (e) {
+        // Cloudinary upload error details bubble here
+        return res.status(502).json({ success: false, message: `Upload failed: ${e.message}` });
+      }
     }
 
     const created = await ColivingPlan.create({
@@ -66,9 +73,12 @@ router.post("/", upload.single("image"), async (req, res, next) => {
       enabled: String(enabled) === "false" ? false : true,
       image: imageMeta,
     });
-    res.status(201).json({ success: true, data: created });
-  } catch (e) { next(e); }
+    return res.status(201).json({ success: true, data: created });
+  } catch (e) {
+    return next(e);
+  }
 });
+
 
 // PUT /api/plans/:id  (multipart/form-data; field: image)
 router.put("/:id", upload.single("image"), async (req, res, next) => {

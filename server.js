@@ -30,6 +30,25 @@ app.use('/api/portfolio', portfolioRoutes);
 const colivingPlansRouter = require("./routes/colivingPlans");
 app.use("/api/plans", colivingPlansRouter);
 
+// 404 (optional, helps debugging)
+app.use((req, res, next) => {
+  res.status(404).json({ success: false, message: "Not Found" });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("ERROR:", err && (err.stack || err)); // log full stack
+  if (err.name === "MulterError") {
+    // file too large, unexpected field, etc.
+    return res.status(400).json({ success: false, message: err.message });
+  }
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+
 app.get('/', (req, res) => {
   res.send('Coliving Gurgaon API is running 🚀');
 });
