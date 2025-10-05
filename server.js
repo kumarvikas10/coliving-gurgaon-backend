@@ -31,15 +31,13 @@ const colivingPlansRouter = require("./routes/colivingPlans");
 app.use("/api/plans", colivingPlansRouter);
 
 // 404 (optional, helps debugging)
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({ success: false, message: "Not Found" });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
-  console.error("ERROR:", err && (err.stack || err)); // log full stack
+  console.error("ERROR:", err?.stack || err);
   if (err.name === "MulterError") {
-    // file too large, unexpected field, etc.
     return res.status(400).json({ success: false, message: err.message });
   }
   res.status(err.status || 500).json({

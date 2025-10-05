@@ -51,20 +51,28 @@ router.post("/", upload.single("image"), async (req, res, next) => {
 
     let imageMeta;
     if (req.file?.buffer) {
-      try {
-        const up = await uploadBufferToCloudinary(req.file.buffer, "coliving/plans");
-        imageMeta = {
-          publicId: up.public_id,
-          secureUrl: up.secure_url,
-          bytes: up.bytes,
-          format: up.format,
-          width: up.width,
-          height: up.height,
-        };
-      } catch (e) {
-        // Cloudinary upload error details bubble here
-        return res.status(502).json({ success: false, message: `Upload failed: ${e.message}` });
-      }
+      const uploadOptions = {
+        folder: "coliving/plans",
+        resource_type: "image",
+        format: "webp",
+        quality: "auto:eco",
+        transformation: [{ fetch_format: "auto", quality: "auto" }],
+      };
+      // Wrap upload_stream in a Promise
+      const up = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(uploadOptions, (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        }).end(req.file.buffer);
+      });
+      imageMeta = {
+        publicId: up.public_id,
+        secureUrl: up.secure_url,
+        bytes: up.bytes,
+        format: up.format,
+        width: up.width,
+        height: up.height,
+      };
     }
 
     const created = await ColivingPlan.create({
@@ -78,6 +86,7 @@ router.post("/", upload.single("image"), async (req, res, next) => {
     return next(e);
   }
 });
+
 
 
 // PUT /api/plans/:id  (multipart/form-data; field: image)
