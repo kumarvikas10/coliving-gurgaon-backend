@@ -27,6 +27,9 @@ app.use('/api/media', mediaRoutes);
 const portfolioRoutes = require('./routes/portfolio');
 app.use('/api/portfolio', portfolioRoutes);
 
+const colivingPlansRouter = require("./routes/colivingPlans");
+app.use("/api/plans", colivingPlansRouter);
+
 app.get('/', (req, res) => {
   res.send('Coliving Gurgaon API is running 🚀');
 });
