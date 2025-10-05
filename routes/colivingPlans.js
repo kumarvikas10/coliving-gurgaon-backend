@@ -17,6 +17,8 @@ function uploadBufferToCloudinary(buffer, folder = "plans") {
   });
 }
 
+router.get("/ping", (req,res)=>res.json({ok:true}));
+
 // GET /api/plans
 router.get("/", async (req, res, next) => {
   try {
