@@ -3,6 +3,25 @@ const router = express.Router();
 const Microlocation = require('../models/Microlocation');
 
 // ✅ Get all microlocations for a city
+
+router.get('/', async (req, res) => {
+  try {
+    const includeAll = String(req.query.all || 'false').toLowerCase() === 'true';
+    const includeDeleted = String(req.query.deleted || 'false').toLowerCase() === 'true';
+    const { city } = req.query; // optional filter
+    const filter = {};
+    if (city) filter.city = city; // use same field your model stores (id or slug)
+    if (!includeAll) filter.enabled = true; // if you track enabled
+    if (!includeDeleted) filter.isDeleted = false; // if you track soft delete
+    const rows = await Microlocation.find(filter).sort({ name: 1 });
+    res.json({ success: true, count: rows.length, data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 router.get('/:city', async (req, res) => {
   try {
     const { city } = req.params; // slug
