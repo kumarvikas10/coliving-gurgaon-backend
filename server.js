@@ -30,6 +30,9 @@ app.use('/api/portfolio', portfolioRoutes);
 const colivingPlansRouter = require("./routes/colivingPlans");
 app.use("/api/plans", colivingPlansRouter);
 
+const amenitiesRouter = require("./routes/amenities");
+app.use("/api/amenities", amenitiesRouter); // NEW
+
 // 404 (optional, helps debugging)
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Not Found" });
