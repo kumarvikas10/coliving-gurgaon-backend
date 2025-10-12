@@ -57,11 +57,8 @@ router.get("/", async (req, res, next) => {
       Microlocation.find({}, { _id: 1, name: 1, slug: 1, city: 1 }).lean()
     ]);
 
-    // Build lookup maps
-    // City may be stored as the CityContent _id (recommended with your current form), or as a slug string.
     const cityById = new Map(cityRows.map(c => [String(c._id), { name: c.displayCity || c.city, slug: c.city }]));
     const cityBySlug = new Map(cityRows.map(c => [String(c.city), { name: c.displayCity || c.city, slug: c.city }]));
-
     const microById = new Map(microRows.map(m => [String(m._id), { name: m.name, slug: m.slug, city: m.city }]));
 
     // Hydrate names into response (non-destructive: preserve ids)
@@ -150,8 +147,6 @@ router.get("/:id", async (req, res, next) => {
 });
 
 
-// POST /api/properties (multipart form-data)
-// fields: JSON strings for complex fields and array "images" files
 router.post("/", upload.array("images", 20), async (req, res, next) => {
   try {
     // parse primitives and JSON fields from form-data
@@ -245,6 +240,19 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
       const v = parseJSON(f);
       if (typeof v !== "undefined") updates[f] = v;
     });
+
+    const nextPlans = Array.isArray(updates.coliving_plans) ? updates.coliving_plans : prop.coliving_plans;
+    const prices = (nextPlans || [])
+      .map(p => Number(p.price))
+      .filter(n => Number.isFinite(n) && n > 0);
+    if (prices.length) {
+      const min = Math.min(...prices);
+      updates.startingPrice = min; // ensure list reflects latest plan edits
+    } else if (typeof updates.startingPrice !== "undefined") {
+      // if caller explicitly clears plans and sets a startingPrice, keep it
+    } else {
+      updates.startingPrice = 0;
+    }
 
     // append any newly uploaded images with incremental order
     if (Array.isArray(req.files) && req.files.length) {
