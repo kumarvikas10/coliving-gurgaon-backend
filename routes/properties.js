@@ -210,7 +210,15 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
       verified,
     });
     res.status(201).json({ success: true, data: created });
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e?.code === 11000) {
+      return res.status(409).json({ success: false, message: "Slug already exists" });
+    }
+    if (e?.name === "CastError" || e?.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: e.message });
+    }
+    return next(e);
+  }
 });
 
 
@@ -228,7 +236,7 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
 
     // Collect scalar and JSON updates
     const set = {};
-    ["name","slug","description","space_type","status"].forEach((k) => {
+    ["name", "slug", "description", "space_type", "status"].forEach((k) => {
       if (typeof req.body[k] === "string") set[k] = req.body[k].trim();
     });
     if (typeof req.body.startingPrice !== "undefined") set.startingPrice = Number(req.body.startingPrice);
@@ -237,7 +245,7 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
     if (typeof req.body.featured !== "undefined") set.featured = String(req.body.featured) === "true" || req.body.featured === true;
     if (typeof req.body.verified !== "undefined") set.verified = String(req.body.verified) === "true" || req.body.verified === true;
 
-    ["space_contact_details","location","amenities","coliving_plans","seo","other_detail","tags"].forEach((f) => {
+    ["space_contact_details", "location", "amenities", "coliving_plans", "seo", "other_detail", "tags"].forEach((f) => {
       const v = parseJSON(f);
       if (typeof v !== "undefined") set[f] = v;
     });

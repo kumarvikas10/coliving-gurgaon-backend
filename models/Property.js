@@ -39,7 +39,7 @@ const LocationSchema = new mongoose.Schema(
     address: { type: String, trim: true },
     latitude: { type: Number },
     longitude: { type: Number },
-    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: false },
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "CityContent", required: false },
     state: { type: String, trim: true, default: "" },
     country: { type: String, trim: true, default: "" },
     location_slug: { type: String, trim: true, index: true },
