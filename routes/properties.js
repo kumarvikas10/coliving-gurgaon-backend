@@ -210,6 +210,41 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
       verified,
     });
     res.status(201).json({ success: true, data: created });
+
+    // routes/properties.js - POST route, add after parseJSON calls:
+    console.log("POST /api/properties payload:", {
+      name, slug,
+      location: location?.city ? `city=${location.city}` : "no city",
+      amenities: Array.isArray(amenities) ? `${amenities.length} items` : "not array",
+      coliving_plans: Array.isArray(coliving_plans) ? `${coliving_plans.length} plans` : "not array"
+    });
+
+    // Also sanitize IDs before Property.create:
+    const cleanObjectId = (v) => (typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v) ? v : undefined);
+
+    if (location?.city) {
+      location.city = cleanObjectId(location.city);
+      if (!location.city) {
+        return res.status(400).json({ success: false, message: "Invalid city ID" });
+      }
+    }
+
+    // Sanitize amenities array
+    const safeAmenities = Array.isArray(amenities)
+      ? amenities.map(String).filter(id => /^[0-9a-fA-F]{24}$/.test(id))
+      : [];
+
+    // Sanitize coliving_plans
+    const safePlans = Array.isArray(coliving_plans)
+      ? coliving_plans
+        .map(p => ({
+          plan: cleanObjectId(typeof p?.plan === "object" ? p.plan?._id : p?.plan),
+          price: Number(p?.price),
+          duration: p?.duration || "month"
+        }))
+        .filter(p => p.plan && Number.isFinite(p.price))
+      : [];
+
   } catch (e) {
     if (e?.code === 11000) {
       return res.status(409).json({ success: false, message: "Slug already exists" });
