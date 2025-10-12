@@ -1,8 +1,9 @@
-// routes/properties.js
 const express = require("express");
 const router = express.Router();
 const Property = require("../models/Property");
-const upload = require("../middleware/upload"); // memoryStorage + image/svg+xml in filter
+const CityContent = require("../models/CityContent");       // NEW
+const Microlocation = require("../models/Microlocation");   // NEW
+const upload = require("../middleware/upload");
 const cloudinary = require("../utils/cloudinary");
 
 // helper: upload one buffer to Cloudinary via upload_stream
@@ -33,29 +34,69 @@ const toImageDoc = (up, order = 0, alt = "") => ({
   alt,
 });
 
-// GET /api/properties
-// filters: ?city=ObjectId&status=approved&featured=true&search=text&micro=ObjectId
+
 router.get("/", async (req, res, next) => {
   try {
     const { city, status, featured, search, micro, all = "true", deleted = "false" } = req.query;
+
     const filter = {};
     if (deleted !== "true") filter.isDeleted = false;
     if (all !== "true") filter.status = "approved";
-    if (city) filter["location.city"] = city;
+    if (city) filter["location.city"] = city;                 // client sends stored id (or slug if you decide so)
     if (status) filter.status = status;
     if (featured === "true") filter.featured = true;
     if (micro) filter["location.micro_locations"] = micro;
-    if (search) filter.name = new RegExp(search.trim(), "i");
+    if (search) filter.name = new RegExp(String(search).trim(), "i");
 
-    const docs = await Property.find(filter)
-      .select("-__v")
-      .populate("location.city", "name")
-      .populate("location.micro_locations", "name")
-      .sort({ createdAt: -1 })
-      .lean();
-    res.json({ success: true, count: docs.length, data: docs });
-  } catch (e) { next(e); }
+    // Fetch raw properties first (lean for speed)
+    const docs = await Property.find(filter).select("-__v").sort({ createdAt: -1 }).lean();
+
+    // Load reference data once
+    const [cityRows, microRows] = await Promise.all([
+      CityContent.find({}, { _id: 1, city: 1, displayCity: 1 }).lean(),
+      Microlocation.find({}, { _id: 1, name: 1, slug: 1, city: 1 }).lean()
+    ]);
+
+    // Build lookup maps
+    // City may be stored as the CityContent _id (recommended with your current form), or as a slug string.
+    const cityById = new Map(cityRows.map(c => [String(c._id), { name: c.displayCity || c.city, slug: c.city }]));
+    const cityBySlug = new Map(cityRows.map(c => [String(c.city), { name: c.displayCity || c.city, slug: c.city }]));
+
+    const microById = new Map(microRows.map(m => [String(m._id), { name: m.name, slug: m.slug, city: m.city }]));
+
+    // Hydrate names into response (non-destructive: preserve ids)
+    const withNames = docs.map(d => {
+      const out = { ...d };
+      const loc = { ...(d.location || {}) };
+
+      // City: support either ObjectId string or slug stored in location.city
+      const rawCity = loc.city;
+      if (rawCity != null) {
+        const key = String(rawCity);
+        const cityMeta = cityById.get(key) || cityBySlug.get(key);
+        loc.city = cityMeta
+          ? { _id: key, name: cityMeta.name, slug: cityMeta.slug }
+          : { _id: key, name: key };
+      }
+
+      // Microlocations: stored as ObjectId array referencing Microlocation
+      const rawMicros = Array.isArray(loc.micro_locations) ? loc.micro_locations : [];
+      loc.micro_locations = rawMicros.map(id => {
+        const key = String(id);
+        const meta = microById.get(key);
+        return meta ? { _id: key, name: meta.name, slug: meta.slug } : { _id: key, name: key };
+      });
+
+      out.location = loc;
+      return out;
+    });
+
+    res.json({ success: true, count: withNames.length, data: withNames });
+  } catch (e) {
+    next(e);
+  }
 });
+
 
 // GET /api/properties/:id
 router.get("/:id", async (req, res, next) => {
@@ -145,6 +186,47 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
     res.status(201).json({ success: true, data: created });
   } catch (e) { next(e); }
 });
+
+
+router.get("/:id", async (req, res, next) => {
+  try {
+    const d = await Property.findById(req.params.id).lean();
+    if (!d || d.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
+
+    // Same enrichment as list
+    const [cityRows, microRows] = await Promise.all([
+      CityContent.find({}, { _id: 1, city: 1, displayCity: 1 }).lean(),
+      Microlocation.find({}, { _id: 1, name: 1, slug: 1, city: 1 }).lean()
+    ]);
+
+    const cityById = new Map(cityRows.map(c => [String(c._id), { name: c.displayCity || c.city, slug: c.city }]));
+    const cityBySlug = new Map(cityRows.map(c => [String(c.city), { name: c.displayCity || c.city, slug: c.city }]));
+    const microById = new Map(microRows.map(m => [String(m._id), { name: m.name, slug: m.slug, city: m.city }]));
+
+    const out = { ...d };
+    const loc = { ...(d.location || {}) };
+
+    const rawCity = loc.city;
+    if (rawCity != null) {
+      const key = String(rawCity);
+      const cityMeta = cityById.get(key) || cityBySlug.get(key);
+      loc.city = cityMeta ? { _id: key, name: cityMeta.name, slug: cityMeta.slug } : { _id: key, name: key };
+    }
+
+    const rawMicros = Array.isArray(loc.micro_locations) ? loc.micro_locations : [];
+    loc.micro_locations = rawMicros.map(id => {
+      const key = String(id);
+      const meta = microById.get(key);
+      return meta ? { _id: key, name: meta.name, slug: meta.slug } : { _id: key, name: key };
+    });
+
+    out.location = loc;
+    res.json({ success: true, data: out });
+  } catch (e) {
+    next(e);
+  }
+});
+
 
 // PUT /api/properties/:id (multipart form-data, optional new images appended)
 router.put("/:id", upload.array("images", 20), async (req, res, next) => {
