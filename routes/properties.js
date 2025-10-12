@@ -100,6 +100,7 @@ router.get("/", async (req, res, next) => {
 
 // GET /api/properties/:id
 router.get("/:id", async (req, res, next) => {
+  console.log("[GET /api/properties/:id]", req.params.id);
   try {
     const d = await Property.findById(req.params.id).lean();
     if (!d || d.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
