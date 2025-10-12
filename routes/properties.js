@@ -97,19 +97,32 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// GET /api/properties/slug/:slug
+router.get("/slug/:slug", async (req, res, next) => {
+  try {
+    const doc = await Property.findOne({ slug: req.params.slug, isDeleted: false }).lean();
+    if (!doc) return res.status(404).json({ success: false, message: "Not found" });
+    res.json({ success: true, data: doc });
+  } catch (e) { next(e); }
+});
+
 
 // GET /api/properties/:id
 router.get("/:id", async (req, res, next) => {
   console.log("[GET /api/properties/:id]", req.params.id);
   try {
+    const includeDeleted = String(req.query.deleted || "true").toLowerCase() === "true"; // allow by default for admin
     const d = await Property.findById(req.params.id).lean();
-    if (!d || d.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
+    if (!d) return res.status(404).json({ success: false, message: "Not found" });
+    if (!includeDeleted && d.isDeleted) {
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
 
+    // enrichment (same as your list):
     const [cityRows, microRows] = await Promise.all([
       CityContent.find({}, { _id: 1, city: 1, displayCity: 1 }).lean(),
       Microlocation.find({}, { _id: 1, name: 1, slug: 1, city: 1 }).lean()
     ]);
-
     const cityById = new Map(cityRows.map(c => [String(c._id), { name: c.displayCity || c.city, slug: c.city }]));
     const cityBySlug = new Map(cityRows.map(c => [String(c.city), { name: c.displayCity || c.city, slug: c.city }]));
     const microById = new Map(microRows.map(m => [String(m._id), { name: m.name, slug: m.slug, city: m.city }]));
@@ -136,14 +149,6 @@ router.get("/:id", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// GET /api/properties/slug/:slug
-router.get("/slug/:slug", async (req, res, next) => {
-  try {
-    const doc = await Property.findOne({ slug: req.params.slug, isDeleted: false }).lean();
-    if (!doc) return res.status(404).json({ success: false, message: "Not found" });
-    res.json({ success: true, data: doc });
-  } catch (e) { next(e); }
-});
 
 // POST /api/properties (multipart form-data)
 // fields: JSON strings for complex fields and array "images" files
