@@ -11,12 +11,12 @@ function uploadOne(buffer, isSvg, folder = "coliving/properties") {
     const options = isSvg
       ? { folder, resource_type: "image", format: "svg" }
       : {
-          folder,
-          resource_type: "image",
-          format: "webp",
-          quality: "auto:eco",
-          transformation: [{ fetch_format: "auto", quality: "auto" }],
-        };
+        folder,
+        resource_type: "image",
+        format: "webp",
+        quality: "auto:eco",
+        transformation: [{ fetch_format: "auto", quality: "auto" }],
+      };
     cloudinary.uploader.upload_stream(options, (err, result) => (err ? reject(err) : resolve(result))).end(buffer);
   });
 }
@@ -49,6 +49,8 @@ router.get("/", async (req, res, next) => {
 
     const docs = await Property.find(filter)
       .select("-__v")
+      .populate("location.city", "name")
+      .populate("location.micro_locations", "name")
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, count: docs.length, data: docs });
@@ -58,7 +60,10 @@ router.get("/", async (req, res, next) => {
 // GET /api/properties/:id
 router.get("/:id", async (req, res, next) => {
   try {
-    const doc = await Property.findById(req.params.id).lean();
+    const doc = await Property.findById(req.params.id)
+      .populate("location.city", "name")
+      .populate("location.micro_locations", "name")
+      .lean();
     if (!doc || doc.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
     res.json({ success: true, data: doc });
   } catch (e) { next(e); }
@@ -153,7 +158,7 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
     };
 
     const updates = {};
-    ["name","slug","description","space_type","status"].forEach((k) => {
+    ["name", "slug", "description", "space_type", "status"].forEach((k) => {
       if (typeof req.body[k] === "string") updates[k] = req.body[k].trim();
     });
     if (typeof req.body.startingPrice !== "undefined") updates.startingPrice = Number(req.body.startingPrice);
@@ -162,7 +167,7 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
     if (typeof req.body.featured !== "undefined") updates.featured = String(req.body.featured) === "true" || req.body.featured === true;
     if (typeof req.body.verified !== "undefined") updates.verified = String(req.body.verified) === "true" || req.body.verified === true;
 
-    const jsonFields = ["space_contact_details","location","amenities","coliving_plans","seo","other_detail","tags"];
+    const jsonFields = ["space_contact_details", "location", "amenities", "coliving_plans", "seo", "other_detail", "tags"];
     jsonFields.forEach((f) => {
       const v = parseJSON(f);
       if (typeof v !== "undefined") updates[f] = v;
@@ -189,7 +194,7 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
 router.patch("/:id/status", async (req, res, next) => {
   try {
     const { status } = req.body;
-    const ok = ["draft","pending","approved","rejected","archived"].includes(String(status));
+    const ok = ["draft", "pending", "approved", "rejected", "archived"].includes(String(status));
     if (!ok) return res.status(400).json({ success: false, message: "invalid status" });
     const updated = await Property.findOneAndUpdate(
       { _id: req.params.id, isDeleted: false },
@@ -240,7 +245,7 @@ router.delete("/:id/images/:imageId", async (req, res, next) => {
     if (!prop || prop.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
     const img = prop.images.id(req.params.imageId);
     if (!img) return res.status(404).json({ success: false, message: "Image not found" });
-    try { await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" }); } catch (_) {}
+    try { await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" }); } catch (_) { }
     img.deleteOne();
     await prop.save();
     res.json({ success: true, message: "Image removed", data: prop });
@@ -256,7 +261,7 @@ router.delete("/:id", async (req, res, next) => {
 
     if (hard) {
       for (const img of prop.images) {
-        try { await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" }); } catch (_) {}
+        try { await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" }); } catch (_) { }
       }
       await Property.deleteOne({ _id: prop._id });
       return res.json({ success: true, message: "Property permanently deleted" });
