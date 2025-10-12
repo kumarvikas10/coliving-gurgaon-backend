@@ -214,62 +214,57 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
 });
 
 
-// PUT /api/properties/:id (multipart form-data, optional new images appended)
+// PUT /api/properties/:id
 router.put("/:id", upload.array("images", 20), async (req, res, next) => {
   try {
     const prop = await Property.findById(req.params.id);
-    if (!prop || prop.isDeleted) return res.status(404).json({ success: false, message: "Not found" });
+    // Allow editing archived; remove the isDeleted block
+    if (!prop) return res.status(404).json({ success: false, message: "Not found" });
 
     const parseJSON = (field) => {
       if (typeof req.body[field] === "undefined") return undefined;
       try { return JSON.parse(req.body[field]); } catch { return req.body[field]; }
     };
 
-    const updates = {};
-    ["name", "slug", "description", "space_type", "status"].forEach((k) => {
-      if (typeof req.body[k] === "string") updates[k] = req.body[k].trim();
+    // Collect scalar and JSON updates
+    const set = {};
+    ["name","slug","description","space_type","status"].forEach((k) => {
+      if (typeof req.body[k] === "string") set[k] = req.body[k].trim();
     });
-    if (typeof req.body.startingPrice !== "undefined") updates.startingPrice = Number(req.body.startingPrice);
-    if (typeof req.body.rating !== "undefined") updates.rating = Number(req.body.rating);
-    if (typeof req.body.reviewCount !== "undefined") updates.reviewCount = Number(req.body.reviewCount);
-    if (typeof req.body.featured !== "undefined") updates.featured = String(req.body.featured) === "true" || req.body.featured === true;
-    if (typeof req.body.verified !== "undefined") updates.verified = String(req.body.verified) === "true" || req.body.verified === true;
+    if (typeof req.body.startingPrice !== "undefined") set.startingPrice = Number(req.body.startingPrice);
+    if (typeof req.body.rating !== "undefined") set.rating = Number(req.body.rating);
+    if (typeof req.body.reviewCount !== "undefined") set.reviewCount = Number(req.body.reviewCount);
+    if (typeof req.body.featured !== "undefined") set.featured = String(req.body.featured) === "true" || req.body.featured === true;
+    if (typeof req.body.verified !== "undefined") set.verified = String(req.body.verified) === "true" || req.body.verified === true;
 
-    const jsonFields = ["space_contact_details", "location", "amenities", "coliving_plans", "seo", "other_detail", "tags"];
-    jsonFields.forEach((f) => {
+    ["space_contact_details","location","amenities","coliving_plans","seo","other_detail","tags"].forEach((f) => {
       const v = parseJSON(f);
-      if (typeof v !== "undefined") updates[f] = v;
+      if (typeof v !== "undefined") set[f] = v;
     });
 
-    const nextPlans = Array.isArray(updates.coliving_plans) ? updates.coliving_plans : prop.coliving_plans;
-    const prices = (nextPlans || [])
-      .map(p => Number(p.price))
-      .filter(n => Number.isFinite(n) && n > 0);
-    if (prices.length) {
-      const min = Math.min(...prices);
-      updates.startingPrice = min; // ensure list reflects latest plan edits
-    } else if (typeof updates.startingPrice !== "undefined") {
-      // if caller explicitly clears plans and sets a startingPrice, keep it
-    } else {
-      updates.startingPrice = 0;
-    }
+    // Recompute startingPrice from new/old plans
+    const nextPlans = Array.isArray(set.coliving_plans) ? set.coliving_plans : prop.coliving_plans;
+    const prices = (nextPlans || []).map(p => Number(p.price)).filter(n => Number.isFinite(n) && n > 0);
+    set.startingPrice = prices.length ? Math.min(...prices) : 0;
 
-    // append any newly uploaded images with incremental order
+    // Optional image append
+    const ops = { $set: set };
     if (Array.isArray(req.files) && req.files.length) {
-      let maxOrder = prop.images.length ? Math.max(...prop.images.map((i) => i.order || 0)) : -1;
+      let maxOrder = prop.images.length ? Math.max(...prop.images.map(i => i.order || 0)) : -1;
       const appended = [];
       for (const f of req.files) {
         const isSvg = f.mimetype === "image/svg+xml" || /\.svg$/i.test(f.originalname || "");
         const up = await uploadOne(f.buffer, isSvg, "coliving/properties");
         appended.push(toImageDoc(up, ++maxOrder, ""));
       }
-      updates.$push = { images: { $each: appended } };
+      ops.$push = { images: { $each: appended } };
     }
 
-    const updated = await Property.findByIdAndUpdate(prop._id, updates, { new: true, runValidators: true });
+    const updated = await Property.findByIdAndUpdate(prop._id, ops, { new: true, runValidators: true });
     res.json({ success: true, data: updated });
   } catch (e) { next(e); }
 });
+
 
 // PATCH /api/properties/:id/status  body: { status }
 router.patch("/:id/status", async (req, res, next) => {
