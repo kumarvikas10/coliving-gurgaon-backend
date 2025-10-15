@@ -15,6 +15,10 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 
 // Routes
 app.use('/api/admin', require('./routes/admin'));
+
+const statesRouter = require("./routes/states");
+app.use("/api/states", statesRouter);
+
 app.use('/api/cities', require('./routes/cities'));
 
 const microRoutes = require('./routes/microlocations');
