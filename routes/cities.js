@@ -1,11 +1,18 @@
-// routes/cities.js
 const express = require("express");
 const CityContent = require("../models/CityContent");
 const State = require("../models/State");
 
+const router = express.Router();
+
 // helpers
 const slugify = (s) =>
-  String(s || "").trim().toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+  String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 
 const resolveStateId = async (v) => {
   if (!v) return null;
@@ -18,17 +25,19 @@ const resolveStateId = async (v) => {
   return st?._id || null;
 };
 
-// PUBLIC
-const publicRouter = express.Router();
-publicRouter.get("/ping", (req, res) => res.json({ ok: true }));
-publicRouter.get("/", async (req, res) => {
+// health check
+router.get("/ping", (req, res) => res.json({ ok: true }));
+
+// GET /api/cities?state=<id|slug>&withState=true
+router.get("/", async (req, res) => {
   try {
     const { state, withState } = req.query;
     const filter = {};
     if (state) {
       const isId = /^[0-9a-fA-F]{24}$/.test(String(state));
-      if (isId) filter.state = state;
-      else {
+      if (isId) {
+        filter.state = state;
+      } else {
         const s = await State.findOne({ state: String(state).toLowerCase() }).select("_id").lean();
         if (!s) return res.json([]);
         filter.state = s._id;
@@ -38,30 +47,30 @@ publicRouter.get("/", async (req, res) => {
     const projection = withState === "true" ? "city displayCity state" : "city";
     q = q.select(projection);
     if (withState === "true") q = q.populate("state", "displayState state");
-    res.json(await q.lean());
+    return res.json(await q.lean());
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
-publicRouter.get("/:city", async (req, res) => {
+
+// GET /api/cities/:city (slug)
+router.get("/:city", async (req, res) => {
   try {
     const row = await CityContent.findOne({ city: String(req.params.city).toLowerCase() })
       .populate("state", "displayState state")
       .lean();
     if (!row) return res.status(404).json({ error: "City not found" });
-    res.json(row);
+    return res.json(row);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
-// ADMIN
-const adminRouter = express.Router();
-adminRouter.post("/", async (req, res) => {
+// POST /api/cities  { city, state }
+router.post("/", async (req, res) => {
   try {
-    console.log("ADMIN /cities POST body:", req.body); // debug once
     const raw = String(req.body.city || "").trim();
     const stateIn = req.body.state;
     if (!raw || !stateIn) return res.status(400).json({ error: "city and state are required" });
@@ -79,16 +88,17 @@ adminRouter.post("/", async (req, res) => {
     if (e?.code === 11000) return res.status(409).json({ error: "City already exists" });
     if (e?.name === "ValidationError") return res.status(400).json({ error: e.message });
     if (e?.name === "CastError") return res.status(400).json({ error: "Invalid ObjectId" });
-    console.error("ADMIN /cities create error:", e);
+    console.error("POST /api/cities error:", e);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
-
-adminRouter.put("/:city", async (req, res) => {
+// PUT /api/cities/:city  { newCity?, state? }
+router.put("/:city", async (req, res) => {
   try {
     const cur = await CityContent.findOne({ city: String(req.params.city).toLowerCase() });
     if (!cur) return res.status(404).json({ error: "Not found" });
+
     if (typeof req.body.newCity === "string" && req.body.newCity.trim()) {
       const nextSlug = slugify(req.body.newCity);
       if (nextSlug !== cur.city) {
@@ -98,26 +108,32 @@ adminRouter.put("/:city", async (req, res) => {
         cur.displayCity = req.body.newCity.trim();
       }
     }
+
     if (typeof req.body.state !== "undefined") {
       const stateId = await resolveStateId(req.body.state);
       if (!stateId) return res.status(400).json({ error: "Invalid state" });
       cur.state = stateId;
     }
+
     await cur.save();
-    res.json({ success: true, data: cur });
+    return res.json({ success: true, data: cur });
   } catch (e) {
     if (e?.code === 11000) return res.status(409).json({ error: "City already exists" });
     if (e?.name === "ValidationError") return res.status(400).json({ error: e.message });
-    res.status(500).json({ error: "Server error" });
-  }
-});
-adminRouter.delete("/:city", async (req, res) => {
-  try {
-    const del = await CityContent.deleteOne({ city: String(req.params.city).toLowerCase() });
-    res.json({ success: true, deletedCount: del.deletedCount });
-  } catch {
-    res.status(500).json({ error: "Server error" });
+    console.error("PUT /api/cities/:city error:", e);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
-module.exports = { publicRouter, adminRouter };
+// DELETE /api/cities/:city
+router.delete("/:city", async (req, res) => {
+  try {
+    const del = await CityContent.deleteOne({ city: String(req.params.city).toLowerCase() });
+    return res.json({ success: true, deletedCount: del.deletedCount });
+  } catch (e) {
+    console.error("DELETE /api/cities/:city error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+module.exports = router;
