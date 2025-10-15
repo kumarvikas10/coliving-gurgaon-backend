@@ -1,15 +1,22 @@
-const mongoose = require('mongoose');
+// models/CityContent.js
+const mongoose = require("mongoose");
 
-const CityContentSchema = new mongoose.Schema({
-  city: { type: String, required: true, unique: true },  // lowercase slug
-  displayCity: { type: String, required: true },         // for display
-  title: String,
-  description: String,
-  footerTitle: String,
-  footerDescription: String,
-  metaTitle: String,
-  metaDescription: String,
-  schemaMarkup: String,
-});
+const CityContentSchema = new mongoose.Schema(
+  {
+    city: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    displayCity: { type: String, required: true, trim: true },
+    state: { type: mongoose.Schema.Types.ObjectId, ref: "State", required: true, index: true },
+    title: String,
+    description: String,
+    footerTitle: String,
+    footerDescription: String,
+    metaTitle: String,
+    metaDescription: String,
+    schemaMarkup: String,
+  },
+  { timestamps: true }
+);
 
-module.exports = mongoose.model('CityContent', CityContentSchema);
+CityContentSchema.index({ state: 1, displayCity: 1 });
+
+module.exports = mongoose.model("CityContent", CityContentSchema);
