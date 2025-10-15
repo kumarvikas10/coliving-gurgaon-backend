@@ -19,7 +19,9 @@ app.use('/api/admin', require('./routes/admin'));
 const statesRouter = require("./routes/states");
 app.use("/api/states", statesRouter);
 
-app.use('/api/cities', require('./routes/cities'));
+const { publicRouter: citiesPublic, adminRouter: citiesAdmin } = require("./routes/cities");
+app.use("/api/cities", citiesPublic);
+app.use("/api/admin/cities", citiesAdmin);
 
 const microRoutes = require('./routes/microlocations');
 app.use('/api/microlocations', microRoutes);
