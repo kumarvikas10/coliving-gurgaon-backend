@@ -14,4 +14,4 @@ const StateSchema = new mongoose.Schema(
 
 StateSchema.index({ enabled: 1, order: 1, displayState: 1 });
 
-module.exports = mongoose.model("State", StateSchema);
+module.exports = mongoose.models.State || mongoose.model("State", StateSchema);

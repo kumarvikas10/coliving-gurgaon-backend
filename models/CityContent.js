@@ -19,4 +19,4 @@ const CityContentSchema = new mongoose.Schema(
 
 CityContentSchema.index({ state: 1, displayCity: 1 });
 
-module.exports = mongoose.model("CityContent", CityContentSchema);
+module.exports = mongoose.models.CityContent || mongoose.model("CityContent", CityContentSchema);
