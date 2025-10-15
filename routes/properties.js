@@ -162,6 +162,24 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
       return res.status(400).json({ success: false, message: "name and slug are required" });
     }
 
+    const dup = await Property.findOne({
+      $or: [
+        { slug }, // change to case-insensitive if needed
+        { name: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } }
+      ]
+    }).select("name slug");
+
+    if (dup) {
+      const nameClash = dup.name?.toLowerCase() === name.toLowerCase();
+      const slugClash = dup.slug?.toLowerCase() === slug.toLowerCase();
+      const msg = nameClash && slugClash
+        ? "Property name and slug already exist"
+        : nameClash
+          ? "Property name already exists"
+          : "Slug already exists";
+      return res.status(409).json({ success: false, message: msg });
+    }
+
     const space_contact_details = parseJSON("space_contact_details", {});
     const location = parseJSON("location", {});
     const amenities = parseJSON("amenities", []);
@@ -247,7 +265,10 @@ router.post("/", upload.array("images", 20), async (req, res, next) => {
 
   } catch (e) {
     if (e?.code === 11000) {
-      return res.status(409).json({ success: false, message: "Slug already exists" });
+      const msg = e?.keyPattern?.name ? "Property name already exists"
+        : e?.keyPattern?.slug ? "Slug already exists"
+          : "Duplicate key";
+      return res.status(409).json({ success: false, message: msg });
     }
     if (e?.name === "CastError" || e?.name === "ValidationError") {
       return res.status(400).json({ success: false, message: e.message });
@@ -263,6 +284,28 @@ router.put("/:id", upload.array("images", 20), async (req, res, next) => {
     const prop = await Property.findById(req.params.id);
     // Allow editing archived; remove the isDeleted block
     if (!prop) return res.status(404).json({ success: false, message: "Not found" });
+
+    const nextName = typeof req.body.name === "string" ? req.body.name.trim() : prop.name;
+    const nextSlug = typeof req.body.slug === "string" ? req.body.slug.trim() : prop.slug;
+
+    const dup = await Property.findOne({
+      _id: { $ne: prop._id },
+      $or: [
+        { slug: nextSlug },
+        { name: { $regex: `^${nextName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } }
+      ]
+    }).select("name slug");
+
+    if (dup) {
+      const nameClash = dup.name?.toLowerCase() === nextName.toLowerCase();
+      const slugClash = dup.slug?.toLowerCase() === nextSlug.toLowerCase();
+      const msg = nameClash && slugClash
+        ? "Property name and slug already exist"
+        : nameClash
+          ? "Property name already exists"
+          : "Slug already exists";
+      return res.status(409).json({ success: false, message: msg });
+    }
 
     const parseJSON = (field) => {
       if (typeof req.body[field] === "undefined") return undefined;
