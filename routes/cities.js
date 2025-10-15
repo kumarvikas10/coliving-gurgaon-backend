@@ -63,20 +63,37 @@ adminRouter.post("/", async (req, res) => {
   try {
     const raw = String(req.body.city || "").trim();
     const stateIn = req.body.state;
-    if (!raw || !stateIn) return res.status(400).json({ error: "city and state are required" });
+
+    if (!raw || !stateIn) {
+      return res.status(400).json({ error: "city and state are required" });
+    }
+
+    // resolve state by id or slug, and verify it exists
     const stateId = await resolveStateId(stateIn);
-    if (!stateId) return res.status(400).json({ error: "Invalid state" });
+    if (!stateId) {
+      return res.status(400).json({ error: "Invalid state" });
+    }
+
+    // slugify and check duplicates up-front
     const city = slugify(raw);
     const dup = await CityContent.findOne({ city }).select("_id").lean();
-    if (dup) return res.status(409).json({ error: "City already exists" });
+    if (dup) {
+      return res.status(409).json({ error: "City already exists" });
+    }
+
+    // create
     const created = await CityContent.create({ city, displayCity: raw, state: stateId });
-    res.status(201).json({ success: true, data: created });
+    return res.status(201).json({ success: true, data: created });
   } catch (e) {
+    // surface helpful errors to the client instead of generic 500
     if (e?.code === 11000) return res.status(409).json({ error: "City already exists" });
     if (e?.name === "ValidationError") return res.status(400).json({ error: e.message });
-    res.status(500).json({ error: "Server error" });
+    if (e?.name === "CastError") return res.status(400).json({ error: "Invalid ObjectId" });
+    console.error("ADMIN /cities create error:", e); // log the stack server-side
+    return res.status(500).json({ error: "Server error" });
   }
 });
+
 adminRouter.put("/:city", async (req, res) => {
   try {
     const cur = await CityContent.findOne({ city: String(req.params.city).toLowerCase() });
