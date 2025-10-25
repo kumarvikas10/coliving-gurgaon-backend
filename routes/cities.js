@@ -28,31 +28,53 @@ const resolveStateId = async (v) => {
 // health check
 router.get("/ping", (req, res) => res.json({ ok: true }));
 
-// GET /api/cities?state=<id|slug>&withState=true
+// GET /api/cities?state=<id|slug>&withState=true&all=true
 router.get("/", async (req, res) => {
   try {
-    const { state, withState } = req.query;
+    const { state, withState, all } = req.query;
     const filter = {};
+    
+    // Filter by state if provided
     if (state) {
       const isId = /^[0-9a-fA-F]{24}$/.test(String(state));
       if (isId) {
         filter.state = state;
       } else {
-        const s = await State.findOne({ state: String(state).toLowerCase() }).select("_id").lean();
+        // Support both state slug and displayState
+        const s = await State.findOne({
+          $or: [
+            { state: String(state).toLowerCase() },
+            { displayState: String(state) } // Match displayState exactly
+          ]
+        }).select("_id").lean();
         if (!s) return res.json([]);
         filter.state = s._id;
       }
     }
+    
+    // Build query
     let q = CityContent.find(filter).sort({ displayCity: 1 });
-    const projection = withState === "true" ? "city displayCity state" : "city";
+    
+    // Always include displayCity and _id, optionally include state
+    const projection = withState === "true" || all === "true" 
+      ? "city displayCity state _id" 
+      : "city displayCity _id";
+    
     q = q.select(projection);
-    if (withState === "true") q = q.populate("state", "displayState state");
+    
+    // Populate state if requested or all=true
+    if (withState === "true" || all === "true") {
+      q = q.populate("state", "displayState state _id");
+    }
+    
     return res.json(await q.lean());
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+
 
 // GET /api/cities/:city (slug)
 router.get("/:city", async (req, res) => {
