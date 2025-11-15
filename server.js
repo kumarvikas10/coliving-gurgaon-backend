@@ -41,6 +41,9 @@ app.use("/api/amenities", amenitiesRouter);
 const propertiesRouter = require("./routes/properties");
 app.use("/api/properties", propertiesRouter);
 
+const leadsRouter = require('./routes/leads');
+app.use('/api/leads', leadsRouter);
+
 // 404 (optional, helps debugging)
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Not Found" });
